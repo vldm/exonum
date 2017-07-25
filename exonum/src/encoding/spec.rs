@@ -95,6 +95,12 @@ macro_rules! encoding_struct {
                 let latest_segment: $crate::encoding::CheckedOffset =
                     ($body as $crate::encoding::Offset).into();
                 $(
+                if vec.len() < $body {
+                    return Err($crate::encoding::Error::UnexpectedlyShortPayload{
+                        actual_size: vec.len() as $crate::encoding::Offset,
+                        minimum_size: $body as $crate::encoding::Offset
+                    })
+                }
                 let latest_segment = <$field_type as $crate::encoding::Field>::check(&vec,
                                                                         $from.into(),
                                                                         $to.into(),

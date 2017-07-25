@@ -1,0 +1,29 @@
+
+[package]
+name = "exonum-fuzz"
+version = "0.0.1"
+authors = ["Automatically generated"]
+publish = false
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+arbitrary = "*"
+[dependencies.exonum]
+path = ".."
+[dependencies.libfuzzer-sys]
+git = "https://github.com/rust-fuzz/libfuzzer-sys.git"
+
+# Prevent this from interfering with workspaces
+[workspace]
+members = ["."]
+
+[[bin]]
+name = "encoding"
+path = "fuzz_targets/encoding.rs"
+
+[[bin]]
+name = "message"
+path = "fuzz_targets/message.rs"
+
