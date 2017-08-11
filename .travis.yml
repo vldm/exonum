@@ -74,31 +74,30 @@ install:
   esac
 - cargo install --list
 script: |
-  case "$FEATURE" in
+  sh -cex "\
+  case "$FEATURE" in\
+  "fmt" )\
+      cargo audit &&\
+      cargo fmt -p exonum -- --write-mode=diff &&\
+      cargo fmt -p sandbox -- --write-mode=diff\
+  ;;\
 
-  "fmt" )
-      cargo audit
-      cargo fmt -p exonum -- --write-mode=diff
-      cargo fmt -p sandbox -- --write-mode=diff
-  ;;
-
-  "clippy-core" )
-      cd exonum && cargo clippy -- -D warnings
-  ;;
-  "clippy-sandbox" )
-      cd sandbox && cargo clippy -- -D warnings
-  ;;
-  "test-core" )
-      RUST_LOG=off cargo test -p exonum --tests --lib
-  ;;
-  "test-sandbox" )
-      RUST_LOG=off cargo test -p sandbox
-  ;;
-  "test-doc" )
-      cargo test -p exonum --doc -- --test-threads=2
-  ;;
-
-  esac
+  "clippy-core" )\
+      cd exonum && cargo clippy -- -D warnings\
+  ;;\
+  "clippy-sandbox" )\
+      cd sandbox && cargo clippy -- -D warnings\
+  ;;\
+  "test-core" )\
+      RUST_LOG=off cargo test -p exonum --tests --lib\
+  ;;\
+  "test-sandbox" )\
+      RUST_LOG=off cargo test -p sandbox\
+  ;;\
+  "test-doc" )\
+      cargo test -p exonum --doc -- --test-threads=2\
+  ;;\
+  esac "
 
 after_success: |
   [ $TRAVIS_BRANCH = master ] &&
