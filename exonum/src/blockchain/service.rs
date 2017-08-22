@@ -22,6 +22,7 @@ use mount::Mount;
 use std::fmt;
 use std::sync::{Arc, RwLock};
 use std::collections::{HashSet, HashMap};
+use std::time::SystemTime;
 use std::net::SocketAddr;
 
 use crypto::{Hash, PublicKey, SecretKey};
@@ -205,6 +206,10 @@ pub struct ApiNodeState {
     reconnects_timeout: HashMap<SocketAddr, Milliseconds>,
     //TODO: update on event?
     peers_info: HashMap<SocketAddr, PublicKey>,
+
+    height_start_time: Option<SystemTime>,
+    height: Height,
+    pool_size: usize,
 }
 impl ApiNodeState {
     fn new() -> ApiNodeState {
@@ -229,7 +234,36 @@ impl SharedNodeState {
             state_update_timeout,
         }
     }
-    /// Return list of connected sockets
+    /// Returns last known height.
+    pub fn height(&self) -> Height {
+        self.state
+            .read()
+            .expect("Expected read lock.")
+            .height
+    }
+    /// Returns timeout since last known height.
+    pub fn height_timeout(&self) -> Option<Milliseconds> {
+        self.state
+            .read()
+            .expect("Expected read lock.")
+            .height_start_time
+            .map(|e|
+                e.elapsed()
+                .map(|duration| {
+                    duration.as_secs() * 1000 +
+                    duration.subsec_nanos() as u64  / 1000000
+                })
+                .unwrap_or(0)
+            )
+    }
+    /// Returns count of tx in mempool.
+    pub fn pool_size(&self) -> usize{
+        self.state
+            .read()
+            .expect("Expected read lock.")
+            .pool_size
+    }
+    /// Returns list of connected sockets
     pub fn incoming_connections(&self) -> Vec<SocketAddr> {
         self.state
             .read()
@@ -239,7 +273,7 @@ impl SharedNodeState {
             .cloned()
             .collect()
     }
-    /// Return list of our connection sockets
+    /// Returns list of our connection sockets
     pub fn outgoing_connections(&self) -> Vec<SocketAddr> {
         self.state
             .read()
@@ -249,7 +283,7 @@ impl SharedNodeState {
             .cloned()
             .collect()
     }
-    /// Return reconnects list
+    /// Returns reconnects list
     pub fn reconnects_timeout(&self) -> Vec<(SocketAddr, Milliseconds)> {
         self.state
             .read()
@@ -259,7 +293,7 @@ impl SharedNodeState {
             .map(|(c, e)| (*c, *e))
             .collect()
     }
-    /// Return peers info list
+    /// Returns peers info list
     pub fn peers_info(&self) -> Vec<(SocketAddr, PublicKey)> {
         self.state
             .read()
@@ -269,15 +303,26 @@ impl SharedNodeState {
             .map(|(c, e)| (*c, *e))
             .collect()
     }
-    /// Update internal state, from `Node` State`
+    /// Updates internal shared state, from `Node` `State`
     pub fn update_node_state(&self, state: &State) {
+        // calculate all important data
+        let height_start_time = state.height_start_time();
+
+        let pool_size = state.transactions()
+                                      .read()
+                                      .expect("expect read lock.")
+                                      .len();
+        // lock shared state
+        let mut shared_state = self.state.write()
+                .expect("Expected write lock.");
+
+        // write data into shared state
         for (p, c) in state.peers().iter() {
-            self.state
-                .write()
-                .expect("Expected write lock.")
-                .peers_info
-                .insert(c.addr(), *p);
+            shared_state.peers_info.insert(c.addr(), *p);
         }
+        shared_state.height_start_time = Some(height_start_time);
+        shared_state.height = state.height();
+        shared_state.pool_size = pool_size;
     }
 
     /// Returns value of the `state_update_timeout`.
@@ -285,7 +330,7 @@ impl SharedNodeState {
         self.state_update_timeout
     }
 
-    /// add incomming connection into state
+    /// Adds incomming connection into state
     pub fn add_incoming_connection(&self, addr: SocketAddr) {
         self.state
             .write()
@@ -293,7 +338,7 @@ impl SharedNodeState {
             .incoming_connections
             .insert(addr);
     }
-    /// add outgoing connection into state
+    /// Adds outgoing connection into state
     pub fn add_outgoing_connection(&self, addr: SocketAddr) {
         self.state
             .write()
@@ -302,7 +347,7 @@ impl SharedNodeState {
             .insert(addr);
     }
 
-    /// remove incomming connection from state
+    /// Removes incomming connection from state
     pub fn remove_incoming_connection(&self, addr: &SocketAddr) -> bool {
         self.state
             .write()
@@ -311,7 +356,7 @@ impl SharedNodeState {
             .remove(addr)
     }
 
-    /// remove outgoing connection from state
+    /// Removes outgoing connection from state
     pub fn remove_outgoing_connection(&self, addr: &SocketAddr) -> bool {
         self.state
             .write()
@@ -320,7 +365,7 @@ impl SharedNodeState {
             .remove(addr)
     }
 
-    /// Add reconect timeout
+    /// Adds reconect timeout
     pub fn add_reconnect_timeout(
         &self,
         addr: SocketAddr,

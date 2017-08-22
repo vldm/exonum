@@ -742,10 +742,13 @@ impl Node {
                 let api_context = ApiContext::new(&self);
                 let mut mount = Mount::new();
                 mount.mount("api/services", api_context.mount_public_api());
+                let shared_api_state = self.handler().api_state().clone();
 
                 let mut router = Router::new();
                 let pool = self.state().transactions().clone();
-                let system_api = public::SystemApi::new(pool, blockchain.clone());
+                let system_api = public::SystemApi::new(pool,
+                                                        blockchain.clone(),
+                                                        shared_api_state);
                 system_api.wire(&mut router);
                 mount.mount("api/system", router);
                 if self.api_options.enable_blockchain_explorer {

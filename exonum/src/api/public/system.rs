@@ -15,9 +15,12 @@
 use router::Router;
 use iron::prelude::*;
 
+use helpers::Height;
 use node::state::TxPool;
+use blockchain::SharedNodeState;
 use blockchain::Blockchain;
 use crypto::{Hash, HexValue};
+use events::Milliseconds;
 use explorer::{TxInfo, BlockchainExplorer};
 use api::{Api, ApiError};
 
@@ -39,17 +42,27 @@ struct MemPoolInfo {
     size: usize,
 }
 
+#[derive(Serialize)]
+struct HealthStatus {
+    height: Height,
+    pool_size: usize,
+    height_timeout: Option<Milliseconds>,
+}
+
 /// Public system API.
 #[derive(Clone, Debug)]
 pub struct SystemApi {
     pool: TxPool,
     blockchain: Blockchain,
+    shared_api_state: SharedNodeState,
 }
 
 impl SystemApi {
     /// Creates a new `private::SystemApi` instance.
-    pub fn new(pool: TxPool, blockchain: Blockchain) -> SystemApi {
-        SystemApi { pool, blockchain }
+    pub fn new(pool: TxPool,
+               blockchain: Blockchain,
+               shared_api_state: SharedNodeState) -> SystemApi {
+        SystemApi { pool, blockchain, shared_api_state }
     }
 
     fn get_mempool_info(&self) -> MemPoolInfo {
@@ -72,6 +85,13 @@ impl SystemApi {
                 },
                 |o| Ok(MemPoolResult::MemPool(MemPoolTxInfo { content: o.info() })),
             )
+    }
+    fn get_health_status(&self) -> HealthStatus {
+        HealthStatus {
+            height: self.shared_api_state.height(),
+            height_timeout: self.shared_api_state.height_timeout(),
+            pool_size: self.shared_api_state.pool_size(),
+        }
     }
 }
 
@@ -103,6 +123,13 @@ impl Api for SystemApi {
             }
         };
 
+        let _self = self.clone();
+        let health = move |_: &mut Request| -> IronResult<Response> {
+            let info = _self.get_health_status();
+            _self.ok_response(&::serde_json::to_value(info).unwrap())
+        };
+
+        router.get("/v1/health", health, "health");
         router.get("/v1/mempool", mempool_info, "mempool");
         router.get("/v1/transactions/:hash", transaction, "hash");
     }
