@@ -58,6 +58,10 @@ pub enum ExternalMessage {
     PeerAdd(SocketAddr),
     /// Transaction that implements the `Transaction` trait.
     Transaction(Box<Transaction>),
+    /// Start consensus algorithm
+    StartNode,
+    /// Stop consensus algorithm
+    StopNode,
 }
 
 /// Node timeout types.
@@ -531,6 +535,18 @@ impl ApiSender {
         self.0.clone().send(msg).wait().map(drop).map_err(
             into_other,
         )
+    }
+
+    /// Stop node state
+    pub fn stop(&self) -> EventsResult<()> {
+        let msg = ExternalMessage::StopNode;
+        self.inner.post_event(msg)
+    }
+
+    /// Start node state
+    pub fn start(&self) -> EventsResult<()> {
+        let msg = ExternalMessage::StartNode;
+        self.inner.post_event(msg)
     }
 }
 

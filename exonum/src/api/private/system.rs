@@ -153,6 +153,16 @@ impl SystemApi {
         self.node_channel.peer_add(addr)?;
         Ok(())
     }
+
+    fn start(&self) -> Result<(), ApiError> {
+        self.node_channel.start()?;
+        Ok(())
+    }
+
+    fn stop(&self) -> Result<(), ApiError> {
+        self.node_channel.stop()?;
+        Ok(())
+    }
 }
 
 impl Api for SystemApi {
@@ -175,6 +185,18 @@ impl Api for SystemApi {
         };
 
         let _self = self.clone();
+        let start = move |_: &mut Request| -> IronResult<Response> {
+            _self.start()?;
+            _self.ok_response(&::serde_json::to_value("Ok").unwrap())
+        };
+
+        let _self = self.clone();
+        let stop = move |_: &mut Request| -> IronResult<Response> {
+            _self.stop()?;
+            _self.ok_response(&::serde_json::to_value("Ok").unwrap())
+        };
+
+        let _self = self.clone();
         let peers_info = move |_: &mut Request| -> IronResult<Response> {
             let info = _self.get_peers_info();
             _self.ok_response(&::serde_json::to_value(info).unwrap())
@@ -189,5 +211,9 @@ impl Api for SystemApi {
         router.get("/v1/peers", peers_info, "peers_info");
         router.post("/v1/peers", peer_add, "peer_add");
         router.get("/v1/network", network, "network_info");
+
+
+        router.post("/v1/stop", stop, "stop");
+        router.post("/v1/start", start, "start");
     }
 }

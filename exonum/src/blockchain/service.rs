@@ -21,19 +21,18 @@ use mount::Mount;
 
 use std::fmt;
 use std::sync::{Arc, RwLock};
-use std::collections::{HashSet, HashMap};
+use std::collections::{HashMap, HashSet};
 use std::time::SystemTime;
 use std::net::SocketAddr;
 
 use crypto::{Hash, PublicKey, SecretKey};
-use storage::{Snapshot, Fork};
+use storage::{Fork, Snapshot};
 use messages::{Message, RawTransaction};
 use encoding::Error as MessageError;
-use node::{Node, State, ApiSender};
+use node::{ApiSender, Node, NodeChannel, State};
 use node::state::ValidatorState;
 use blockchain::{ConsensusConfig, Blockchain, ValidatorKeys};
 use helpers::{Height, Round, Milliseconds};
-
 /// A trait that describes transaction processing rules (a group of sequential operations
 /// with the Exonum storage) for the given `Message`.
 pub trait Transaction: Message + 'static {
@@ -209,6 +208,7 @@ pub struct ApiNodeState {
 
     height_start_time: Option<SystemTime>,
     height: Height,
+    parked: bool,
     pool_size: usize,
 }
 impl ApiNodeState {
@@ -234,12 +234,13 @@ impl SharedNodeState {
             state_update_timeout,
         }
     }
+    /// Returns current node running state
+    pub fn parked(&self) -> bool {
+        self.state.read().expect("Expected read lock.").parked
+    }
     /// Returns last known height.
     pub fn height(&self) -> Height {
-        self.state
-            .read()
-            .expect("Expected read lock.")
-            .height
+        self.state.read().expect("Expected read lock.").height
     }
     /// Returns timeout since last known height.
     pub fn height_timeout(&self) -> Option<Milliseconds> {
@@ -247,21 +248,17 @@ impl SharedNodeState {
             .read()
             .expect("Expected read lock.")
             .height_start_time
-            .map(|e|
+            .map(|e| {
                 e.elapsed()
-                .map(|duration| {
-                    duration.as_secs() * 1000 +
-                    duration.subsec_nanos() as u64  / 1000000
-                })
-                .unwrap_or(0)
-            )
+                    .map(|duration| {
+                        duration.as_secs() * 1000 + duration.subsec_nanos() as u64 / 1000000
+                    })
+                    .unwrap_or(0)
+            })
     }
     /// Returns count of tx in mempool.
-    pub fn pool_size(&self) -> usize{
-        self.state
-            .read()
-            .expect("Expected read lock.")
-            .pool_size
+    pub fn pool_size(&self) -> usize {
+        self.state.read().expect("Expected read lock.").pool_size
     }
     /// Returns list of connected sockets
     pub fn incoming_connections(&self) -> Vec<SocketAddr> {
@@ -308,13 +305,13 @@ impl SharedNodeState {
         // calculate all important data
         let height_start_time = state.height_start_time();
 
-        let pool_size = state.transactions()
-                                      .read()
-                                      .expect("expect read lock.")
-                                      .len();
+        let pool_size = state
+            .transactions()
+            .read()
+            .expect("expect read lock.")
+            .len();
         // lock shared state
-        let mut shared_state = self.state.write()
-                .expect("Expected write lock.");
+        let mut shared_state = self.state.write().expect("Expected write lock.");
 
         // write data into shared state
         for (p, c) in state.peers().iter() {
@@ -322,6 +319,7 @@ impl SharedNodeState {
         }
         shared_state.height_start_time = Some(height_start_time);
         shared_state.height = state.height();
+        shared_state.parked = state.parked();
         shared_state.pool_size = pool_size;
     }
 

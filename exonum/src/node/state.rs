@@ -53,6 +53,7 @@ pub type TxPool = Arc<RwLock<BTreeMap<Hash, Box<Transaction>>>>;
 pub struct State {
     validator_state: Option<ValidatorState>,
     our_connect_message: Connect,
+    parked: bool,
 
     consensus_public_key: PublicKey,
     consensus_secret_key: SecretKey,
@@ -401,7 +402,24 @@ impl State {
             timeout_adjuster: make_timeout_adjuster(&stored.consensus),
             propose_timeout: 0,
             config: stored,
+            parked: false,
         }
+    }
+
+    /// Returns `true` if node should ignore consensus messages.
+    /// Usefull for tests.
+    pub fn parked(&self) -> bool {
+        self.parked
+    }
+    
+    /// Stop node state, if stopped node should ignore consensus messages.
+    pub fn park(&mut self) {
+        self.parked = true
+    }
+
+    /// Start algorithm conesensus work propertly.
+    pub fn unpark(&mut self) {
+        self.parked = false
     }
 
     /// Returns `ValidatorState` if the node is validator.
