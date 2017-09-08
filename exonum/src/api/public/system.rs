@@ -21,7 +21,7 @@ use blockchain::SharedNodeState;
 use blockchain::Blockchain;
 use crypto::{Hash, HexValue};
 use events::Milliseconds;
-use explorer::{TxInfo, BlockchainExplorer};
+use explorer::{BlockchainExplorer, TxInfo};
 use api::{Api, ApiError};
 
 #[derive(Serialize)]
@@ -43,10 +43,17 @@ struct MemPoolInfo {
 }
 
 #[derive(Serialize)]
+enum NodeStatus {
+    Running,
+    Parked,
+}
+
+#[derive(Serialize)]
 struct HealthStatus {
     height: Height,
     pool_size: usize,
     height_timeout: Option<Milliseconds>,
+    status: NodeStatus,
 }
 
 /// Public system API.
@@ -59,14 +66,22 @@ pub struct SystemApi {
 
 impl SystemApi {
     /// Creates a new `private::SystemApi` instance.
-    pub fn new(pool: TxPool,
-               blockchain: Blockchain,
-               shared_api_state: SharedNodeState) -> SystemApi {
-        SystemApi { pool, blockchain, shared_api_state }
+    pub fn new(
+        pool: TxPool,
+        blockchain: Blockchain,
+        shared_api_state: SharedNodeState,
+    ) -> SystemApi {
+        SystemApi {
+            pool,
+            blockchain,
+            shared_api_state,
+        }
     }
 
     fn get_mempool_info(&self) -> MemPoolInfo {
-        MemPoolInfo { size: self.pool.read().expect("Expected read lock").len() }
+        MemPoolInfo {
+            size: self.pool.read().expect("Expected read lock").len(),
+        }
     }
 
     fn get_transaction(&self, hash_str: &str) -> Result<MemPoolResult, ApiError> {
@@ -78,10 +93,11 @@ impl SystemApi {
             .map_or_else(
                 || {
                     let explorer = BlockchainExplorer::new(&self.blockchain);
-                    Ok(explorer.tx_info(&hash)?.map_or(
-                        MemPoolResult::Unknown,
-                        MemPoolResult::Committed,
-                    ))
+                    Ok(
+                        explorer
+                            .tx_info(&hash)?
+                            .map_or(MemPoolResult::Unknown, MemPoolResult::Committed),
+                    )
                 },
                 |o| Ok(MemPoolResult::MemPool(MemPoolTxInfo { content: o.info() })),
             )
@@ -91,6 +107,11 @@ impl SystemApi {
             height: self.shared_api_state.height(),
             height_timeout: self.shared_api_state.height_timeout(),
             pool_size: self.shared_api_state.pool_size(),
+            status: if self.shared_api_state.parked() {
+                NodeStatus::Parked
+            } else {
+                NodeStatus::Running
+            },
         }
     }
 }
@@ -115,11 +136,9 @@ impl Api for SystemApi {
                     };
                     result(&_self, &::serde_json::to_value(info).unwrap())
                 }
-                None => {
-                    Err(ApiError::IncorrectRequest(
-                        "Required parameter of transaction 'hash' is missing".into(),
-                    ))?
-                }
+                None => Err(ApiError::IncorrectRequest(
+                    "Required parameter of transaction 'hash' is missing".into(),
+                ))?,
             }
         };
 

@@ -55,6 +55,10 @@ pub enum ExternalMessage {
     PeerAdd(SocketAddr),
     /// Transaction that implements the `Transaction` trait.
     Transaction(Box<Transaction>),
+    /// Start consensus algorithm
+    StartNode,
+    /// Stop consensus algorithm
+    StopNode,
 }
 
 /// Node timeout types.
@@ -490,6 +494,14 @@ where
                 info!("Send Connect message to {}", address);
                 self.connect(&address);
             }
+            ExternalMessage::StopNode => {
+                warn!("Parking node. It will stuck in current state!");
+                self.state.park();
+            }
+            ExternalMessage::StartNode => {
+                info!("Unparking node.");
+                self.state.unpark();
+            }
         }
     }
 
@@ -541,6 +553,18 @@ where
     /// Addr peer to peer list
     pub fn peer_add(&self, addr: SocketAddr) -> EventsResult<()> {
         let msg = ExternalMessage::PeerAdd(addr);
+        self.inner.post_event(msg)
+    }
+
+    /// Stop node state
+    pub fn stop(&self) -> EventsResult<()> {
+        let msg = ExternalMessage::StopNode;
+        self.inner.post_event(msg)
+    }
+
+    /// Start node state
+    pub fn start(&self) -> EventsResult<()> {
+        let msg = ExternalMessage::StartNode;
         self.inner.post_event(msg)
     }
 }
