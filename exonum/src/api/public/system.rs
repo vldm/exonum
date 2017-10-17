@@ -20,7 +20,7 @@ use node::state::TxPool;
 use blockchain::SharedNodeState;
 use blockchain::Blockchain;
 use crypto::{Hash, HexValue};
-use events::Milliseconds;
+use helpers::Milliseconds;
 use explorer::{BlockchainExplorer, TxInfo};
 use api::{Api, ApiError};
 

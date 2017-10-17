@@ -29,7 +29,7 @@ use crypto::{Hash, PublicKey, SecretKey};
 use storage::{Fork, Snapshot};
 use messages::{Message, RawTransaction};
 use encoding::Error as MessageError;
-use node::{ApiSender, Node, NodeChannel, State};
+use node::{ApiSender, Node, State};
 use node::state::ValidatorState;
 use blockchain::{ConsensusConfig, Blockchain, ValidatorKeys};
 use helpers::{Height, Round, Milliseconds};

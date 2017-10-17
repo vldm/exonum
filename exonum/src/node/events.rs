@@ -44,6 +44,12 @@ impl NodeHandler {
                 info!("Send Connect message to {}", address);
                 self.connect(&address);
             }
+            ExternalMessage::StartNode => {
+                self.state.unpark()
+            }
+            ExternalMessage::StopNode => {
+                self.state.park()
+            }
         }
     }
 

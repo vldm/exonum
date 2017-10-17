@@ -538,15 +538,19 @@ impl ApiSender {
     }
 
     /// Stop node state
-    pub fn stop(&self) -> EventsResult<()> {
+    pub fn stop(&self) -> io::Result<()> {
         let msg = ExternalMessage::StopNode;
-        self.inner.post_event(msg)
+        self.0.clone().send(msg).wait().map(drop).map_err(
+            into_other,
+        )
     }
 
     /// Start node state
-    pub fn start(&self) -> EventsResult<()> {
+    pub fn start(&self) -> io::Result<()> {
         let msg = ExternalMessage::StartNode;
-        self.inner.post_event(msg)
+        self.0.clone().send(msg).wait().map(drop).map_err(
+            into_other,
+        )
     }
 }
 
