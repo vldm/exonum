@@ -29,9 +29,10 @@ impl ClapBackend {
         I: IntoIterator<Item = T>,
         T: Into<OsString> + Clone,
     {
+        let authors = crate_authors!("\n"); // crate_authors! broken in tx_sender
         let app = clap::App::new("Exonum application based on fabric configuration.")
             .version(crate_version!())
-            .author(crate_authors!("\n"))
+            .author(authors)
             .about(
                 "It contain basic set of command, to deploy network on exonum.",
             );
@@ -59,9 +60,10 @@ impl ClapBackend {
     }
 
     pub fn execute(commands: &[CollectedCommand]) -> Feedback {
+        let authors = crate_authors!("\n"); // crate_authors! broken in tx_sender
         let app = clap::App::new("Exonum application based on fabric configuration.")
             .version(crate_version!())
-            .author(crate_authors!("\n"))
+            .author(authors)
             .about("Exonum application based on fabric configuration.");
 
         let subcommands: Vec<_> = commands
