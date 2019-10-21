@@ -5,6 +5,7 @@
 [![CircleCI Build Status](https://img.shields.io/circleci/project/github/exonum/exonum/master.svg?label=MacOS)](https://circleci.com/gh/exonum/exonum/tree/master)
 [![Appveyor Build Status](https://img.shields.io/appveyor/ci/exonum-org/exonum/master.svg?label=Windows)](https://ci.appveyor.com/project/exonum-org/exonum)
 [![dependency status](https://deps.rs/repo/github/exonum/exonum/status.svg)](https://deps.rs/repo/github/exonum/exonum)
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fvldm%2Fexonum.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2Fvldm%2Fexonum?ref=badge_shield)
 
 **Project info:**
 [![Docs.rs](https://docs.rs/exonum/badge.svg)](https://docs.rs/exonum)
@@ -39,3 +40,7 @@ This is the main Exonum repository that includes
   * [Timestamping](examples/timestamping/README.md).
 
 See individual projects readme for the details.
+
+
+## License
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fvldm%2Fexonum.svg?type=large)](https://app.fossa.io/projects/git%2Bgithub.com%2Fvldm%2Fexonum?ref=badge_large)
